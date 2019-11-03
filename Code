@@ -1,0 +1,57 @@
+Function Get-MetaData 
+{
+    [CmdletBinding()]
+    Param
+    (
+        [Parameter( Mandatory = $true, 
+                    ValueFromPipeline = $true,
+                    ValueFromPipelineByPropertyName = $true, 
+                    ValueFromRemainingArguments = $false, 
+                    Position=0 )]
+        [string[]]$Path,
+
+        [Parameter( Mandatory = $false, 
+                    ValueFromPipeline = $true,
+                    ValueFromPipelineByPropertyName = $true, 
+                    ValueFromRemainingArguments = $false, 
+                    Position=1 )]  
+        [string[]]$FileExtension = ('.avi', '.iso', '.mkv', '.m2ts', '.m4v', '.mp4')
+    )
+
+    Begin
+    {}
+    Process
+    {
+        if ( $PSCmdlet.ShouldProcess( $Path, "Reading path metadata" ) )
+        {
+            $Path | foreach {
+    
+                $objShell = New-Object -ComObject Shell.Application 
+                $objFolder = $objShell.namespace($_) 
+    
+                $Files = $FileExtension | foreach { 
+                    $extension = $_ 
+                    $objFolder.Items() | ? Path -match ([Regex]::Escape($extension))
+                }
+
+                $Files | foreach {
+                    $File = $_
+                    $Hash = @{}
+                    0,1,2,3,4,5,11,21,27,28,57,164,191,194,314,315,316 | Foreach {
+
+                        $PropertyName = $($objFolder.GetDetailsOf($objFolder.Items, $_)) 
+                        $PropertyValue = $($objFolder.GetDetailsOf($File, $_))
+                        $Hash[$PropertyName] = $PropertyValue
+                    }
+
+                    $FileMetaData = New-Object psobject -Property $Hash
+                    $Hash.Clear()
+                    
+                }
+                Write-Output $FileMetaData
+            }
+        }
+    }
+    End
+    {}
+}
